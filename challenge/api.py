@@ -50,7 +50,7 @@ class Flight(BaseModel):
         return mes
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8080))  # 🔥 GARANTE QUE USA A PORTA 8080
+    port = int(os.getenv("PORT", 10000))  # 🔥 GARANTE QUE USA A PORTA 10000
     uvicorn.run(app, host="0.0.0.0", port=port)    
 
 class DelayPredictionInputBody(BaseModel):
