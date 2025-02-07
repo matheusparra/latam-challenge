@@ -1,7 +1,41 @@
-name: 'Continuous Delivery'
+name: 🚀 Continuous Deployment
 
 on:
-  ...
+  push:
+    branches:
+      - main  # Garante que o deploy acontece apenas na branch "main"
 
 jobs:
-  ...
+  deploy:
+    name: Deploy to Google Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Build and Push Docker Image
+        run: |
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/latam-api
+
+      - name: 🚀 Deploy to Cloud Run
+        run: |
+          gcloud run deploy latam-api \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/latam-api \
+            --platform managed \
+            --allow-unauthenticated \
+            --region us-central1 \
+            --port 8000
+
+      - name: Deployment Successful
+        run: echo "API successfully deployed to Google Cloud Run!"

@@ -1,53 +1,86 @@
 import fastapi
+from fastapi import HTTPException
 import pandas as pd
-from pydantic import BaseModel
+from challenge.model import DelayModel
 from typing import List
-from model import DelayModel  # Importa o modelo de `model.py`
+from pydantic import BaseModel, ValidationError, validator
+import uvicorn
+import os
+
 
 app = fastapi.FastAPI()
 
-# Criando uma instância do modelo
-model = DelayModel()
 
-# Estrutura esperada para a entrada de um voo
-class FlightData(BaseModel):
+# initialize model at start up
+delay_model = DelayModel()
+data = pd.read_csv(filepath_or_buffer="data/data.csv")
+app.valid_opera = data["OPERA"].unique().tolist()
+
+x_train, y_train = delay_model.preprocess(data=data, target_column="delay")
+delay_model.fit(x_train, y_train)
+app.delay_model = delay_model
+
+
+# /predict input body definition
+
+
+class Flight(BaseModel):
     OPERA: str
-    MES: int
     TIPOVUELO: str
-    SIGLADES: str
-    DIANOM: str
+    MES: int
+
+    @validator("OPERA")
+    def validate_opera(opera):
+        if opera not in app.valid_opera:
+            raise HTTPException(status_code=400, detail=f"{opera} is not a valid OPERA")
+        return opera
+
+    @validator("TIPOVUELO")
+    def validate_tipo_vuelo(tipo_vuelo):
+        if tipo_vuelo not in ["N", "I"]:
+            raise HTTPException(
+                status_code=400, detail=f"{tipo_vuelo} is not a valid TIPOVUELO"
+            )
+        return tipo_vuelo
+
+    @validator("MES")
+    def validate_mes(mes):
+        if mes < 1 or mes > 12:
+            raise HTTPException(status_code=400, detail=f"{mes} is not a valid MES")
+        return mes
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8080))  # 🔥 GARANTE QUE USA A PORTA 8080
+    uvicorn.run(app, host="0.0.0.0", port=port)    
+
+class DelayPredictionInputBody(BaseModel):
+    flights: List[Flight]
+
 
 @app.get("/health", status_code=200)
 async def get_health() -> dict:
-    """
-    Endpoint para checar se a API está rodando corretamente.
-    """
     return {"status": "OK"}
 
+
+@app.get("/", status_code=200)
+async def root() -> dict:
+    return {"status": "OK"}
+
+
 @app.post("/predict", status_code=200)
-async def post_predict(flights: List[FlightData]) -> dict:
-    """
-    Endpoint para prever se um voo terá atraso ou não.
-    """
-    df = pd.DataFrame([item.dict() for item in flights])
-
+async def post_predict(data: DelayPredictionInputBody) -> dict:
     try:
-        features = model.preprocess(df)  # Chama o método preprocess() do modelo
-        predictions = model.predict(features)  # Chama o método predict()
-        return {"predictions": predictions}
-    except ValueError as e:
-        raise fastapi.HTTPException(status_code=400, detail=str(e))
+        
+        data = data.model_dump()
+        print("Recebido:", data)  # DEBUG: Ver os dados recebidos
+        raw_x = pd.DataFrame(data["flights"])
+        x = app.delay_model.preprocess(raw_x)
+        prediction = app.delay_model.predict(x)
 
-@app.post("/train", status_code=200)
-async def train_model(flights: List[FlightData], targets: List[int]):
-    """
-    Endpoint para treinar o modelo com novos dados.
-    """
-    df = pd.DataFrame([item.dict() for item in flights])
-    df['delay'] = targets  # Adiciona a variável target
+        return {"predict": prediction}
+    
 
-    features, target = model.preprocess(df, target_column="delay")
-    model.fit(features, target)  # Chama o método fit()
-
-    return {"message": "Modelo treinado com sucesso!"}
- 
+    except ValidationError as e:
+        print("Erro de Validação:", e.json())  # DEBUG: Ver detalhes do erro
+        raise HTTPException(status_code=400, detail=e.json())
+    
