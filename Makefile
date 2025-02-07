@@ -23,7 +23,7 @@ install:		## Install dependencies
 	pip install -r requirements-test.txt
 	pip install -r requirements.txt
 
-STRESS_URL = https://delay-model-api-847773596929.us-central1.run.app 
+STRESS_URL = https://latam-challenge-0vrg.onrender.com
 .PHONY: stress-test
 stress-test:
 	# change stress url to your deployed app 
