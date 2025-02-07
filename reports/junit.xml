@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="2.482" timestamp="2025-02-07T08:11:51.275427" hostname="DESKTOP-VON8N56"><testcase classname="" name="tests.api.test_api" time="0.000"><error message="collection failure">ImportError while importing test module '/mnt/c/Users/parra/Documents/Latam/tests/api/test_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/api/test_api.py:4: in &lt;module&gt;
+    from challenge import app
+challenge/__init__.py:1: in &lt;module&gt;
+    from challenge.api import app
+challenge/api.py:5: in &lt;module&gt;
+    from model import DelayModel  # Importa o modelo de `model.py`
+E   ModuleNotFoundError: No module named 'model'</error></testcase></testsuite></testsuites>
